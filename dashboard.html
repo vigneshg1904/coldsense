@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ColdSense · Live Dashboard</title>
+  <meta name="theme-color" content="#04090c">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preload" href="assets/fonts/sora-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <script src="js/vendor/chart.umd.min.js" defer></script>
+  <noscript><style>#loader{display:none}.reveal,.hero-in{opacity:1!important;translate:0 0!important}</style></noscript>
+</head>
+<body class="dash loading is-unknown">
+
+<div id="loader" aria-hidden="true">
+  <div class="ld-half top"></div><div class="ld-half bot"></div>
+  <div class="ld-ring"></div><div class="ld-ring r2"></div>
+  <div class="ld-core">
+    <img class="ld-logo" src="assets/logo.svg" alt="">
+    <svg class="ld-ecg" viewBox="0 0 320 84">
+      <path class="bg" d="M0 42H92l10-4 8 4h12l8-26 12 56 12-70 12 40h22l8-8 10 8H320"/>
+      <path class="ln" d="M0 42H92l10-4 8 4h12l8-26 12 56 12-70 12 40h22l8-8 10 8H320"/>
+    </svg>
+    <div class="ld-brand"><span>Cold</span>Sense</div>
+    <div class="ld-sub">Opening live dashboard</div>
+    <ul class="ld-log">
+      <li style="--d:.4s">Establishing cloud link<b>OK</b></li>
+      <li style="--d:.75s">Subscribing to device status<b>OK</b></li>
+      <li style="--d:1.1s">Loading exposure history<b>OK</b></li>
+    </ul>
+    <div class="ld-bar"><i style="animation-duration:1.9s"></i></div>
+    <div class="ld-pct mono"><span id="ldPct">0</span>%</div>
+  </div>
+</div>
+<div class="leave"></div>
+<canvas id="bg"></canvas>
+
+<header class="nav scrolled">
+  <div class="wrap nav-in">
+    <a class="brand" href="index.html" data-nav><img src="assets/logo.svg" alt=""><div><div><span>Cold</span>Sense</div><small>Live dashboard</small></div></a>
+    <nav class="nav-links">
+      <a href="index.html" data-nav>Home</a><a href="#charts">Analytics</a><a href="#events">Events</a><a href="#device">Device</a>
+    </nav>
+    <div class="nav-right">
+      <div class="pill" id="navPill" data-state="connecting"><i></i><span class="pill-txt">CONNECTING</span></div>
+      <div class="clock mono" id="clock">--:--:--</div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="banner" id="banner" hidden>
+    <svg class="ic"><use href="assets/icons.svg#i-alert"/></svg>
+    <div><b id="bannerTitle"></b><span id="bannerTxt"></span></div>
+  </div>
+
+  <!-- ===== Awaiting first data ===== -->
+  <section class="card awaiting" id="awaiting" hidden>
+    <div class="aw-scan"></div>
+    <h2>Waiting for the ESP32</h2>
+    <p>No reading has been received yet. Power the container, make sure the firmware has your Wi-Fi details, and this page will switch to live data the moment the first packet arrives.</p>
+    <ul class="mono">
+      <li>database&nbsp;&nbsp;<b id="awDb">…</b></li>
+      <li>node&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>/coldchain/device</b></li>
+    </ul>
+  </section>
+
+  <!-- ===== Overview ===== -->
+  <section class="overview" id="overview">
+    <article class="card life hero-in" id="lifeCard" style="--hd:.05s">
+      <div class="card-head"><span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-shield"/></svg>&nbsp; Remaining safe-life</span><span class="chip" id="levelChip">NO DATA</span></div>
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 220 220" aria-hidden="true">
+          <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--c)"/><stop offset="1" style="stop-color:var(--c);stop-opacity:.55"/></linearGradient></defs>
+          <g id="ticks"></g>
+          <circle class="track" cx="110" cy="110" r="92"/>
+          <circle class="arc" id="ringArc" cx="110" cy="110" r="92" transform="rotate(-90 110 110)"/>
+          <circle class="spark" id="ringSpark" r="6"/>
+        </svg>
+        <div class="ring-c">
+          <div class="ring-val"><span id="lifeVal" class="mono">--</span><sup>%</sup></div>
+          <div class="eyebrow">product condition</div>
+        </div>
+      </div>
+      <div class="decision" id="decision">AWAITING DATA</div>
+      <p class="advice" id="advice">Condition and recommendation appear as soon as the ESP32 reports.</p>
+      <div class="mini2">
+        <div><span class="eyebrow">Cumulative risk</span><b class="mono" id="riskVal">--</b></div>
+        <div><span class="eyebrow">Time to inspection</span><b class="mono" id="etaVal">--</b></div>
+      </div>
+    </article>
+
+    <div class="right-col">
+      <div class="kpis">
+        <article class="card kpi hero-in" id="cTemp" style="--hd:.12s">
+          <div class="kh"><span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-thermo"/></svg>&nbsp; Temperature</span><span class="chip sm" id="kTempState">--</span></div>
+          <div class="kv"><b class="mono" id="kTemp">--</b><u>°C</u></div>
+          <div class="tbar" id="tBar"><i class="band"></i><i class="mark"></i></div>
+          <div class="ks mono"><span id="kBand">safe band 2–8 °C</span></div>
+        </article>
+        <article class="card kpi hero-in" id="cHum" style="--hd:.18s;--c:var(--cyan)">
+          <div class="kh"><span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-drop"/></svg>&nbsp; Humidity</span></div>
+          <div class="kv"><b class="mono" id="kHum">--</b><u>%</u></div>
+          <div class="hbar"><i id="humFill"></i></div>
+          <div class="ks mono"><span>relative humidity · DHT11</span></div>
+        </article>
+        <article class="card kpi hero-in" id="cShock" style="--hd:.24s;--c:var(--amber)">
+          <div class="kh"><span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-zap"/></svg>&nbsp; Handling</span><span class="chip sm" id="kShockState">--</span></div>
+          <div class="kv"><b class="mono" id="kShock">--</b><u>g peak</u></div>
+          <div class="ks mono"><span id="kTilt">tilt --°</span><span id="kShockLimit">limit 1.8 g</span></div>
+        </article>
+        <article class="card kpi hero-in" id="cInt" style="--hd:.30s;--c:#a78bfa">
+          <div class="kh"><span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-sliders"/></svg>&nbsp; Sampling</span><span class="chip sm" id="kIntState">--</span></div>
+          <div class="kv"><b class="mono" id="kInt">--</b><u>s interval</u></div>
+          <div class="ks mono"><span id="kSave">adaptive · risk-driven</span></div>
+        </article>
+        <article class="card kpi hero-in" id="cCool" style="--hd:.36s;--c:var(--cyan)">
+          <div class="kh"><span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-snow"/></svg>&nbsp; Cooling</span></div>
+          <div class="kv cool"><svg class="ic fan" id="fanIc"><use href="assets/icons.svg#i-fan"/></svg><b class="mono" id="kCool">--</b></div>
+          <div class="ks mono"><span>Peltier ×2 · fans ×3</span><span id="kDuty">duty --</span></div>
+        </article>
+        <article class="card kpi hero-in" id="cWifi" style="--hd:.42s;--c:var(--green)">
+          <div class="kh"><span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-wifi"/></svg>&nbsp; Wi-Fi link</span></div>
+          <div class="kv"><b class="mono" id="kRssi">--</b><u>dBm</u><div class="bars" id="rssiBars"><i></i><i></i><i></i><i></i></div></div>
+          <div class="ks mono"><span id="kQueue">queued 0</span><span id="kSync">--</span></div>
+        </article>
+      </div>
+
+      <div class="card expo hero-in" style="--hd:.5s">
+        <div><span class="eyebrow">Excursions</span><b class="mono" id="mExc">--</b></div>
+        <div><span class="eyebrow">Time out of band</span><b class="mono" id="mOut">--</b></div>
+        <div><span class="eyebrow">Peak temperature</span><b class="mono" id="mPeak">--</b></div>
+        <div><span class="eyebrow">Shock events</span><b class="mono" id="mShk">--</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Charts ===== -->
+  <section class="sec-d" id="charts">
+    <div class="sec-bar">
+      <div><div class="eyebrow teal">Analytics</div><h2>Exposure history</h2></div>
+      <div class="bar-r">
+        <div class="seg" id="range" role="tablist" aria-label="Time range">
+          <button data-r="300000">5 min</button><button data-r="1800000" class="on">30 min</button><button data-r="3600000">1 h</button><button data-r="0">All</button>
+        </div>
+        <button class="btn btn-sm" id="csvBtn"><svg class="ic"><use href="assets/icons.svg#i-download"/></svg> CSV</button>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <article class="card chart c6 reveal"><div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-thermo"/></svg> Temperature <em>vs safe band</em></span><span class="mono now" id="nTemp"></span></div><div class="cb"><canvas id="chTemp"></canvas></div></article>
+      <article class="card chart c6 reveal" style="--rd:.06s"><div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-shield"/></svg> Safe-life &amp; cumulative risk</span><span class="mono now" id="nCond"></span></div><div class="cb"><canvas id="chCond"></canvas></div></article>
+      <article class="card chart c4 reveal"><div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-drop"/></svg> Humidity</span><span class="mono now" id="nHum"></span></div><div class="cb sm"><canvas id="chHum"></canvas></div></article>
+      <article class="card chart c4 reveal" style="--rd:.06s"><div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-sliders"/></svg> Adaptive sampling interval</span><span class="mono now" id="nInt"></span></div><div class="cb sm"><canvas id="chInt"></canvas></div></article>
+      <article class="card chart c4 reveal" style="--rd:.12s"><div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-zap"/></svg> Shock (peak g)</span><span class="mono now" id="nShock"></span></div><div class="cb sm"><canvas id="chShock"></canvas></div></article>
+    </div>
+  </section>
+
+  <!-- ===== Events + device ===== -->
+  <section class="lower">
+    <article class="card events reveal" id="events">
+      <div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-activity"/></svg> Event log</span>
+        <div class="seg sm" id="evFilter"><button data-f="all" class="on">All</button><button data-f="alert">Alerts</button></div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Time</th><th>Event</th><th>Temp</th><th>Safe-life</th><th>Decision</th></tr></thead><tbody id="log"></tbody></table></div>
+    </article>
+
+    <div class="side">
+      <article class="card dev reveal" id="device" style="--rd:.05s">
+        <div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-cpu"/></svg> ESP32 device</span><span class="chip sm" id="devChip" style="--c:var(--mute)">--</span></div>
+        <dl class="kvlist mono">
+          <div><dt>Last check-in</dt><dd id="dSeen">--</dd></div>
+          <div><dt>IP address</dt><dd id="dIp">--</dd></div>
+          <div><dt>Uptime</dt><dd id="dUp">--</dd></div>
+          <div><dt>Firmware</dt><dd id="dFw">--</dd></div>
+          <div><dt>Free heap</dt><dd id="dHeap">--</dd></div>
+        </dl>
+        <div class="sensors">
+          <span class="sens" id="sDht"><i></i>DHT11</span><span class="sens" id="sMpu"><i></i>MPU6050</span><span class="sens" id="sOled"><i></i>OLED</span>
+        </div>
+      </article>
+
+      <article class="card ship reveal" style="--rd:.1s">
+        <div class="ch"><span><svg class="ic"><use href="assets/icons.svg#i-box"/></svg> Shipment</span></div>
+        <dl class="kvlist mono">
+          <div><dt>Monitoring since</dt><dd id="shStart">--</dd></div>
+          <div><dt>Duration</dt><dd id="shDur">--</dd></div>
+          <div><dt>Readings loaded</dt><dd id="shN">0</dd></div>
+        </dl>
+        <button class="btn btn-sm full" id="resetBtn"><svg class="ic"><use href="assets/icons.svg#i-refresh"/></svg> Start new shipment</button>
+        <p class="hint" id="resetHint">Resets the cumulative risk to 0 on the device. Use when a fresh package is loaded.</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<dialog id="resetDlg" class="dlg">
+  <form method="dialog">
+    <h3>Start a new shipment?</h3>
+    <p>This sends a reset command to the ESP32. Cumulative risk and event counters return to zero and the safe-life goes back to 100 %. History already stored is kept.</p>
+    <div class="dlg-actions"><button class="btn btn-sm" value="cancel">Cancel</button><button class="btn btn-primary btn-sm" value="ok" id="resetOk">Reset device</button></div>
+  </form>
+</dialog>
+
+<footer class="foot">
+  <div class="wrap">
+    <div><b style="color:var(--txt)">ColdSense</b> · live data from Firebase Realtime Database</div>
+    <div>Academic prototype · simulated temperature-sensitive package</div>
+  </div>
+</footer>
+
+<script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

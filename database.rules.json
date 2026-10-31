@@ -1,0 +1,39 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "coldchain": {
+      ".read": true,
+      ".write": true,
+
+      "device": {
+        "lastSeen": { ".validate": "newData.isNumber()" },
+        "rssi":     { ".validate": "newData.isNumber()" },
+        "uptime":   { ".validate": "newData.isNumber()" }
+      },
+
+      "live": {
+        ".validate": "newData.hasChildren(['ts','temp','hum','cond'])",
+        "ts":   { ".validate": "newData.isNumber()" },
+        "temp": { ".validate": "newData.isNumber() && newData.val() > -60 && newData.val() < 150" },
+        "hum":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+        "cond": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" }
+      },
+
+      "readings": {
+        "$ts": {
+          ".validate": "$ts.matches(/^[0-9]{13}$/) && newData.hasChildren(['ts','temp','hum','cond','decision'])",
+          "ts":       { ".validate": "newData.isNumber()" },
+          "temp":     { ".validate": "newData.isNumber() && newData.val() > -60 && newData.val() < 150" },
+          "hum":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+          "cond":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+          "decision": { ".validate": "newData.isString() && newData.val().length <= 24" }
+        }
+      },
+
+      "command": {
+        "resetId": { ".validate": "newData.isNumber()" }
+      }
+    }
+  }
+}

@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ColdSense — Cold-Chain Remaining Safe-Life Prediction</title>
+  <meta name="description" content="ESP32 + IoT system that monitors temperature-sensitive shipments and predicts their remaining safe-life from cumulative exposure.">
+  <meta name="theme-color" content="#04090c">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preload" href="assets/fonts/sora-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <noscript><style>#loader{display:none}.reveal,.hero-in{opacity:1!important;translate:0 0!important}</style></noscript>
+</head>
+<body class="landing loading">
+
+<!-- ===== Boot loader ===== -->
+<div id="loader" aria-hidden="true">
+  <div class="ld-half top"></div><div class="ld-half bot"></div>
+  <div class="ld-ring"></div><div class="ld-ring r2"></div>
+  <div class="ld-core">
+    <img class="ld-logo" src="assets/logo.svg" alt="">
+    <svg class="ld-ecg" viewBox="0 0 320 84">
+      <path class="bg" d="M0 42H92l10-4 8 4h12l8-26 12 56 12-70 12 40h22l8-8 10 8H320"/>
+      <path class="ln" d="M0 42H92l10-4 8 4h12l8-26 12 56 12-70 12 40h22l8-8 10 8H320"/>
+    </svg>
+    <div class="ld-brand"><span>Cold</span>Sense</div>
+    <div class="ld-sub">Remaining safe-life prediction</div>
+    <ul class="ld-log">
+      <li style="--d:.5s">DHT11 · temperature &amp; humidity<b>OK</b></li>
+      <li style="--d:.85s">MPU6050 · shock detector<b>OK</b></li>
+      <li style="--d:1.2s">Risk engine · cumulative exposure<b>OK</b></li>
+      <li style="--d:1.55s">Firebase · realtime link<b>OK</b></li>
+    </ul>
+    <div class="ld-bar"><i></i></div>
+    <div class="ld-pct mono"><span id="ldPct">0</span>%</div>
+  </div>
+</div>
+<div class="leave"></div>
+<canvas id="bg"></canvas>
+
+<!-- ===== Navigation ===== -->
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="index.html" data-nav><img src="assets/logo.svg" alt=""><div><div><span>Cold</span>Sense</div><small>Safe-life monitor</small></div></a>
+    <nav class="nav-links">
+      <a href="#features">Features</a><a href="#how">How it works</a><a href="#hardware">Hardware</a><a href="#decisions">Decisions</a>
+    </nav>
+    <div class="nav-right">
+      <div class="pill" id="navPill" data-state="connecting"><i></i><span class="pill-txt">CONNECTING</span></div>
+      <a class="btn btn-primary btn-sm" href="dashboard.html" data-nav>Dashboard <svg class="ic go"><use href="assets/icons.svg#i-arrow"/></svg></a>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ===== Hero ===== -->
+<section class="hero wrap">
+  <div class="hero-copy">
+    <div class="eyebrow teal hero-in" style="--hd:.05s"><svg class="ic"><use href="assets/icons.svg#i-activity"/></svg>&nbsp; Embedded Systems × IoT × Predictive Risk</div>
+    <h1 class="hero-in" style="--hd:.15s">Know exactly how much <span class="grad">safe life</span> is left in every shipment.</h1>
+    <p class="lead hero-in" style="--hd:.3s">ColdSense watches temperature, humidity and handling shocks inside a Peltier-cooled container, scores the <b>cumulative exposure</b> on an ESP32, and predicts the product's remaining safe-life — live, not just an alarm at a fixed limit.</p>
+    <div class="cta hero-in" style="--hd:.45s">
+      <a class="btn btn-primary" href="dashboard.html" data-nav>Open live dashboard <svg class="ic go"><use href="assets/icons.svg#i-arrow"/></svg></a>
+      <a class="btn" href="#how">See how it works</a>
+    </div>
+    <ul class="trust hero-in" style="--hd:.6s">
+      <li><svg class="ic"><use href="assets/icons.svg#i-cpu"/></svg> Edge compute on ESP32</li>
+      <li><svg class="ic"><use href="assets/icons.svg#i-db"/></svg> Firebase realtime</li>
+      <li><svg class="ic"><use href="assets/icons.svg#i-wifi"/></svg> Keeps working offline</li>
+    </ul>
+  </div>
+
+  <div class="card monitor hero-in" style="--hd:.4s" id="monitor">
+    <div class="mon-head">
+      <span class="eyebrow"><svg class="ic"><use href="assets/icons.svg#i-activity"/></svg>&nbsp; Live telemetry</span>
+      <div class="pill" id="heroPill" data-state="connecting"><i></i><span class="pill-txt">CONNECTING</span></div>
+    </div>
+    <canvas id="monCanvas"></canvas>
+    <div class="mon-read">
+      <div><span class="eyebrow">Temp</span><b id="mTemp">--</b><u>°C</u></div>
+      <div><span class="eyebrow">Humidity</span><b id="mHum">--</b><u>%</u></div>
+      <div><span class="eyebrow">Safe-life</span><b id="mLife">--</b><u>%</u></div>
+    </div>
+    <div class="mon-foot">
+      <span class="chip" id="mDecision" style="--c:var(--mute)">AWAITING DATA</span>
+      <span class="mono" id="mSeen">waiting for the ESP32…</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Component ticker ===== -->
+<div class="ticker reveal" aria-hidden="true">
+  <div class="ticker-track">
+    <span>ESP32</span><span>DHT11</span><span>MPU6050</span><span>SSD1306 OLED</span><span>Peltier TEC ×2</span><span>12 V fans ×3</span><span>Buck converter</span><span>Li-ion 4 × 1800 mAh</span><span>Firebase RTDB</span><span>Vercel</span>
+    <span>ESP32</span><span>DHT11</span><span>MPU6050</span><span>SSD1306 OLED</span><span>Peltier TEC ×2</span><span>12 V fans ×3</span><span>Buck converter</span><span>Li-ion 4 × 1800 mAh</span><span>Firebase RTDB</span><span>Vercel</span>
+  </div>
+</div>
+
+<!-- ===== Problem ===== -->
+<section class="sec wrap" id="why">
+  <div class="sec-head reveal">
+    <div class="eyebrow teal">The problem</div>
+    <h2>A threshold alarm tells you the box got warm.<br><span class="grad">It can't tell you what that did to the product.</span></h2>
+  </div>
+  <div class="vs">
+    <article class="card vs-card dim reveal" style="--rd:.05s">
+      <h3><svg class="ic"><use href="assets/icons.svg#i-bell"/></svg> Fixed-limit alarm</h3>
+      <ul>
+        <li>Fires once a value crosses a line</li>
+        <li>Forgets the exposure when temperature recovers</li>
+        <li>Treats a 10-second blip like a 10-minute excursion</li>
+        <li>Samples at one fixed rate, wasting battery</li>
+      </ul>
+    </article>
+    <article class="card vs-card hot reveal" style="--rd:.15s">
+      <h3><svg class="ic"><use href="assets/icons.svg#i-shield"/></svg> ColdSense exposure model</h3>
+      <ul>
+        <li>Scores <b>severity × duration × repetition</b></li>
+        <li>Remembers every excursion — condition only moves down</li>
+        <li>Shocks and rough handling spend the same risk budget</li>
+        <li>Speeds up sampling when risk rises, relaxes when safe</li>
+      </ul>
+    </article>
+  </div>
+</section>
+
+<!-- ===== Features ===== -->
+<section class="sec wrap" id="features">
+  <div class="sec-head reveal">
+    <div class="eyebrow teal">Capabilities</div>
+    <h2>Six engines, one small box.</h2>
+  </div>
+  <div class="feat-grid">
+    <article class="card feat reveal" style="--rd:.0s"><div class="fi"><svg class="ic"><use href="assets/icons.svg#i-brain"/></svg></div><h3>Cumulative Risk Engine</h3><p>Every second spent outside 2–8 °C adds weighted risk. Longer, hotter and repeated excursions cost progressively more.</p></article>
+    <article class="card feat reveal" style="--rd:.08s"><div class="fi"><svg class="ic"><use href="assets/icons.svg#i-shield"/></svg></div><h3>Remaining Safe-Life Estimator</h3><p>Turns accumulated risk into a single product-condition percentage — 95 %, 80 %, 55 % — anyone can read at a glance.</p></article>
+    <article class="card feat reveal" style="--rd:.16s"><div class="fi"><svg class="ic"><use href="assets/icons.svg#i-sliders"/></svg></div><h3>Adaptive Sampling</h3><p>20 s when calm, 10 s when elevated, 3 s when critical. Fewer wake-ups on a battery, full detail when it matters.</p></article>
+    <article class="card feat reveal" style="--rd:.24s"><div class="fi"><svg class="ic"><use href="assets/icons.svg#i-cpu"/></svg></div><h3>Edge Processing</h3><p>The ESP32 decides on its own. If Wi-Fi drops it keeps scoring, buffers readings and back-fills the cloud on reconnect.</p></article>
+    <article class="card feat reveal" style="--rd:.32s"><div class="fi"><svg class="ic"><use href="assets/icons.svg#i-zap"/></svg></div><h3>Shock &amp; Handling Detection</h3><p>MPU6050 polled at 50 Hz catches millisecond impacts between samples and triggers an immediate reading.</p></article>
+    <article class="card feat reveal" style="--rd:.4s"><div class="fi"><svg class="ic"><use href="assets/icons.svg#i-bell"/></svg></div><h3>Decision Engine</h3><p>Converts condition into an action: Continue, Monitor, Prioritize Delivery, Inspection Required or High Risk.</p></article>
+  </div>
+</section>
+
+<!-- ===== How it works ===== -->
+<section class="sec wrap" id="how">
+  <div class="sec-head reveal">
+    <div class="eyebrow teal">Pipeline</div>
+    <h2>From raw sensor reading to a decision in five steps.</h2>
+  </div>
+  <ol class="steps">
+    <li class="step reveal" style="--rd:0s"><span class="sn">01</span><h4>Sense</h4><p>DHT11 temperature &amp; humidity, MPU6050 shock &amp; tilt.</p></li>
+    <li class="step reveal" style="--rd:.1s"><span class="sn">02</span><h4>Compute</h4><p>Exposure risk accumulates on the ESP32 itself.</p></li>
+    <li class="step reveal" style="--rd:.2s"><span class="sn">03</span><h4>Estimate</h4><p>Condition % = 100 − accumulated risk.</p></li>
+    <li class="step reveal" style="--rd:.3s"><span class="sn">04</span><h4>Adapt</h4><p>Risk level sets the next sampling interval.</p></li>
+    <li class="step reveal" style="--rd:.4s"><span class="sn">05</span><h4>Report</h4><p>OLED on the box, Firebase to this dashboard.</p></li>
+  </ol>
+  <div class="card formula reveal">
+    <div class="eyebrow">Risk model · runs on the ESP32</div>
+<pre class="mono"><span class="k">excursion</span>  = max(T − <i>8</i>, <i>2</i> − T, 0)
+<span class="k">risk</span>      += excursion × (Δt / 60) × <i>0.9</i> × (1 + <i>0.25</i> × (repeats − 1))
+<span class="k">risk</span>      += max(shock − <i>1.8</i>, 0) × <i>1.5</i>
+<span class="k">condition</span>  = max(0, <i>100</i> − risk)</pre>
+    <p>Each °C·minute outside the band costs 0.9 points, every repeated excursion costs 25 % more, and each g above the shock limit costs 1.5 points. All constants are reported live by the device.</p>
+  </div>
+</section>
+
+<!-- ===== Hardware / architecture ===== -->
+<section class="sec wrap" id="hardware">
+  <div class="sec-head reveal">
+    <div class="eyebrow teal">Hardware</div>
+    <h2>Built from parts on a bench.</h2>
+  </div>
+  <div class="card arch reveal">
+    <div class="arch-scroll">
+    <svg viewBox="0 0 1000 500" class="arch-svg" role="img" aria-label="System architecture: sensors feed the ESP32, which drives the cooling stage and reports to Firebase and the web dashboard">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#2ee6c5"/></marker><marker id="ahc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#ffb020"/></marker></defs>
+      <!-- links -->
+      <g class="ln flow">
+        <path d="M240 97H315V172H388" marker-end="url(#ah)"/>
+        <path d="M240 197H388" marker-end="url(#ah)"/>
+        <path d="M388 255H315V297H240" marker-end="url(#ah)"/>
+        <path d="M612 185H680V100H748" marker-end="url(#ah)"/>
+        <path d="M850 130V213" marker-end="url(#ah)"/>
+        <path d="M500 290V348" marker-end="url(#ah)"/>
+        <path d="M470 394L405 430" marker-end="url(#ah)"/>
+        <path d="M530 394L595 430" marker-end="url(#ah)"/>
+      </g>
+      <g class="ln pwr flow">
+        <path d="M190 422H210" marker-end="url(#ahc)"/>
+        <path d="M265 400V330H420V292" marker-end="url(#ahc)"/>
+      </g>
+      <!-- nodes -->
+      <g class="node"><rect x="50" y="70" width="190" height="54" rx="12"/><text class="t" x="145" y="94" text-anchor="middle">DHT11</text><text class="s" x="145" y="112" text-anchor="middle">temp · humidity</text></g>
+      <g class="node"><rect x="50" y="170" width="190" height="54" rx="12"/><text class="t" x="145" y="194" text-anchor="middle">MPU6050</text><text class="s" x="145" y="212" text-anchor="middle">shock · tilt (I²C)</text></g>
+      <g class="node"><rect x="50" y="270" width="190" height="54" rx="12"/><text class="t" x="145" y="294" text-anchor="middle">SSD1306 OLED</text><text class="s" x="145" y="312" text-anchor="middle">local display (I²C)</text></g>
+      <g class="node core"><rect x="390" y="150" width="220" height="140" rx="16"/><text class="t big" x="500" y="205" text-anchor="middle">ESP32</text><text class="s" x="500" y="228" text-anchor="middle">risk engine · adaptive sampling</text><text class="s" x="500" y="246" text-anchor="middle">decision engine · NVS memory</text><text class="s" x="500" y="270" text-anchor="middle" fill="#2ee6c5">edge processing</text></g>
+      <g class="node cloud"><rect x="750" y="70" width="200" height="60" rx="12"/><text class="t" x="850" y="97" text-anchor="middle">Firebase RTDB</text><text class="s" x="850" y="115" text-anchor="middle">history · live · status</text></g>
+      <g class="node cloud"><rect x="750" y="215" width="200" height="60" rx="12"/><text class="t" x="850" y="242" text-anchor="middle">Web dashboard</text><text class="s" x="850" y="260" text-anchor="middle">Vercel · realtime charts</text></g>
+      <g class="node"><rect x="430" y="350" width="140" height="44" rx="10"/><text class="t sm" x="500" y="377" text-anchor="middle">MOSFET drivers</text></g>
+      <g class="node cool"><rect x="330" y="430" width="150" height="48" rx="10"/><text class="t sm" x="405" y="459" text-anchor="middle">Peltier TEC × 2</text></g>
+      <g class="node cool"><rect x="520" y="430" width="150" height="48" rx="10"/><text class="t sm" x="595" y="459" text-anchor="middle">12 V fans × 3</text></g>
+      <g class="node pwrn"><rect x="40" y="400" width="150" height="44" rx="10"/><text class="t sm" x="115" y="427" text-anchor="middle">4 × Li-ion 18650</text></g>
+      <g class="node pwrn"><rect x="210" y="400" width="110" height="44" rx="10"/><text class="t sm" x="265" y="427" text-anchor="middle">Buck → 5 V</text></g>
+      <!-- link labels -->
+      <text class="s lbl" x="250" y="88">1-wire · GPIO4</text>
+      <text class="s lbl" x="250" y="190">I²C 0x68</text>
+      <text class="s lbl" x="250" y="312">I²C 0x3C</text>
+      <text class="s lbl" x="690" y="150">Wi-Fi · HTTPS</text>
+      <text class="s lbl" x="858" y="176">realtime stream</text>
+      <text class="s lbl" x="508" y="326">GPIO 25 · 26 · 27</text>
+    </svg>
+    </div>
+  </div>
+  <div class="bom">
+    <div class="card bom-i reveal"><svg class="ic"><use href="assets/icons.svg#i-cpu"/></svg><b>ESP32</b><span>×1 · brain &amp; Wi-Fi</span></div>
+    <div class="card bom-i reveal" style="--rd:.05s"><svg class="ic"><use href="assets/icons.svg#i-thermo"/></svg><b>DHT11</b><span>×1 · temp / humidity</span></div>
+    <div class="card bom-i reveal" style="--rd:.1s"><svg class="ic"><use href="assets/icons.svg#i-zap"/></svg><b>MPU6050</b><span>×1 · shock &amp; tilt</span></div>
+    <div class="card bom-i reveal" style="--rd:.15s"><svg class="ic"><use href="assets/icons.svg#i-screen"/></svg><b>OLED</b><span>×1 · local status</span></div>
+    <div class="card bom-i reveal" style="--rd:.2s"><svg class="ic"><use href="assets/icons.svg#i-snow"/></svg><b>Peltier</b><span>×2 · active cooling</span></div>
+    <div class="card bom-i reveal" style="--rd:.25s"><svg class="ic"><use href="assets/icons.svg#i-fan"/></svg><b>12 V fans</b><span>×3 · 2 inside, 1 exhaust</span></div>
+    <div class="card bom-i reveal" style="--rd:.3s"><svg class="ic"><use href="assets/icons.svg#i-battery"/></svg><b>Li-ion cells</b><span>×4 · 3.7 V 1800 mAh</span></div>
+    <div class="card bom-i reveal" style="--rd:.35s"><svg class="ic"><use href="assets/icons.svg#i-power"/></svg><b>Buck converter</b><span>×1 · logic supply</span></div>
+  </div>
+</section>
+
+<!-- ===== Decision engine ===== -->
+<section class="sec wrap" id="decisions">
+  <div class="sec-head reveal">
+    <div class="eyebrow teal">Decision engine</div>
+    <h2>Condition in, <span class="grad">action out.</span></h2>
+  </div>
+  <div class="card scale reveal">
+    <div class="scale-bar">
+      <i style="flex:40;--c:#ff5d73"></i><i style="flex:20;--c:#fb923c"></i><i style="flex:15;--c:#fbbf24"></i><i style="flex:15;--c:#38bdf8"></i><i style="flex:10;--c:#34d399"></i>
+    </div>
+    <div class="scale-ticks mono"><span style="left:0">0 %</span><span style="left:40%">40</span><span style="left:60%">60</span><span style="left:75%">75</span><span style="left:90%">90</span><span style="right:0">100 %</span></div>
+    <div class="scale-marker" id="scaleMarker" hidden><b></b><span class="mono" id="scaleMarkerTxt"></span></div>
+  </div>
+  <div class="dec-grid">
+    <article class="card dec reveal" style="--c:#34d399"><span class="mono">≥ 90 %</span><h4>CONTINUE</h4><p>Conditions nominal. Continue transport as planned.</p></article>
+    <article class="card dec reveal" style="--c:#38bdf8;--rd:.06s"><span class="mono">75 – 89 %</span><h4>MONITOR</h4><p>Minor exposure recorded. Keep monitoring the shipment.</p></article>
+    <article class="card dec reveal" style="--c:#fbbf24;--rd:.12s"><span class="mono">60 – 74 %</span><h4>PRIORITIZE DELIVERY</h4><p>Safe-life is shrinking. Expedite delivery of this package.</p></article>
+    <article class="card dec reveal" style="--c:#fb923c;--rd:.18s"><span class="mono">40 – 59 %</span><h4>INSPECTION REQUIRED</h4><p>Significant exposure. Inspect the package before release.</p></article>
+    <article class="card dec reveal" style="--c:#ff5d73;--rd:.24s"><span class="mono">&lt; 40 %</span><h4>HIGH RISK</h4><p>Safe-life critically low. Quarantine and verify package integrity.</p></article>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="sec wrap">
+  <div class="card cta-band reveal">
+    <div>
+      <div class="eyebrow teal">Live right now</div>
+      <h2>See the container's vital signs.</h2>
+      <p id="ctaStatus" class="mono">checking device link…</p>
+    </div>
+    <a class="btn btn-primary" href="dashboard.html" data-nav>Open live dashboard <svg class="ic go"><use href="assets/icons.svg#i-arrow"/></svg></a>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div><b style="color:var(--txt)">ColdSense</b> · Intelligent Cold-Chain Remaining Safe-Life Prediction System</div>
+    <div>Academic prototype — demonstrated with a simulated temperature-sensitive package; no claims are made about real vaccines or medicines.</div>
+  </div>
+</footer>
+
+<script type="module" src="js/landing.js"></script>
+</body>
+</html>
